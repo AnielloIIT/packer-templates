@@ -1,0 +1,116 @@
+{
+    "variables": {
+      "vm_name": "ubuntu-xenial",
+      "cpu": "4",
+      "ram_size": "4096",
+      "disk_size": "21440",
+      "iso_url": "http://releases.ubuntu.com/16.04/ubuntu-16.04.3-server-amd64.iso",
+      "iso_checksum_type": "sha1",
+      "iso_checksum": "F3532991E031CAE75BCF5E695AFB844DD278FFF9",
+      "username" : "vagrant",
+      "password" : "vagrant",
+      "ssh-keys" : "{{env 'C:/Users/aniel/.ssh'}}"
+    },
+    "builders": [
+    {
+      "vm_name":"{{user `vm_name`}}",
+      "type": "virtualbox-iso",
+      "boot_wait": "5s",
+      "disk_size": "{{user `disk_size`}}",
+  
+      "guest_additions_mode":"disable",
+      "http_directory": ".",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",			 
+      "communicator":"ssh",
+      "ssh_username": "{{user `username`}}",
+      "ssh_password": "{{user `password`}}",
+      "ssh_timeout": "1h",
+      "ssh_pty": "true", 
+      "shutdown_command": "echo 'vagrant' | sudo -S -E shutdown -P now",   
+      "boot_command": [
+        "<enter><f6><esc>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>", 
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs><bs><bs>",
+            "<bs><bs><bs>",
+            "/install/vmlinuz noapic ",
+            "preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed/preseed.cfg ",
+            "debian-installer=en_US auto locale=en_US kbd-chooser/method=us ",
+            "hostname=itmt430-ws ",
+            "fb=false debconf/frontend=noninteractive ",
+            "keyboard-configuration/modelcode=SKIP keyboard-configuration/layout=USA ",
+            "keyboard-configuration/variant=USA console-setup/ask_detect=false ",
+            "initrd=/install/initrd.gz -- <enter>"
+      ],
+      "guest_os_type": "Ubuntu_64",
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--memory",
+          "{{user `ram_size`}}"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--cpus",
+          "{{user `cpu`}}"
+        ]
+      ]
+    }],
+    "provisioners": [
+    {
+        "type": "file",
+        "source": "{{user 'ssh-keys'}}",
+        "destination": "/home/vagrant/key-tmp"
+        },
+        {
+          "type": "file",
+          "source": "./config",
+          "destination": "/home/vagrant/"     
+        },
+        {
+            "type": "shell",
+            "execute_command" : "echo 'vagrant' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'", 
+            "inline": [
+              "mkdir -p /home/vagrant/.ssh",
+              "mkdir -p /root/.ssh",
+              "chmod 600 /home/vagrant/key-tmp",
+              "cp -v /home/vagrant/key-tmp /home/vagrant/.ssh/",
+              "cp -v /home/vagrant/config /home/vagrant/.ssh/",
+              "cp -v /home/vagrant/config /root/.ssh/",
+              "git@github.com:illinoistech-itm/2018-itmt430-2.git"
+            ]
+          },
+          {
+            "type": "shell",
+            "execute_command": "echo 'vagrant' | sudo -S -E sh {{.Path}}",
+            "scripts": [
+              "./scripts/post_install_vagrant_ubuntu.sh"
+            ]
+          }
+],
+    "post-processors": [
+      {
+        "type": "vagrant",
+        "keep_input_artifact": false,
+        "output": "./build/{{.BuildName}}-{{.Provider}}-{{timestamp}}.box"  
+      }
+    ]
+  }
+  
